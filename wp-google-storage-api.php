@@ -228,8 +228,8 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		
 	}
 	
-	public function watch_all_objects() {
-		
+	public function watch_all_objects( $bucket ) {
+		// /b/bucket/o/watch
 	}
 	
 	/* PROJECTS SERVICE ACCOUNT. */
@@ -242,7 +242,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 	 * @return void
 	 */
 	public function get_project_service_account( $project_id ) {
-		
+		// /projects/projectId/serviceAccount
 	}
 	
 }
