@@ -3,7 +3,7 @@
 /**
  * WP Google Storage API
  *
- * @link hhttps://cloud.google.com/storage/docs/json_api/
+ * @link https://cloud.google.com/storage/docs/json_api/
  * @package WP-API-Libraries\WP-Google-Stroage-API
  */
 /*
@@ -40,7 +40,67 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 	
 	/* BUCKET ACCESS CONTROLS. */
 	
+	public function delete_bucket_acl() {
+		
+	}
+	
+	public function get_bucket_acl() {
+		
+	}
+	
+	public function insert_bucket_acl() {
+		
+	}
+	
+	public function list_bucket_acl() {
+		
+	}
+	
+	public function patch_bucket_acl() {
+		
+	}
+	
+	public function update_bucket_acl() {
+		
+	}
+	
 	/* BUCKETS. */
+	
+	public function delete_bucket() {
+		
+	}
+	
+	public function get_bucket() {
+		
+	}
+	
+	public function get_bucket_iam_policy() {
+		
+	}
+	
+	public function add_bucket() {
+		
+	}
+	
+	public function list_bucket() {
+		
+	}
+	
+	public function patch_bucket() {
+		
+	}
+	
+	public function set_bucket_iam_policy() {
+		
+	}
+	
+	public function test_bucket_iam_permissions() {
+		
+	}
+	
+	public function update_bucket() {
+		
+	}
 	
 	/* CHANNELS. */
 	
@@ -49,6 +109,30 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 	}
 	
 	/* DEFAULT OBJECT ACCESS CONTROLS. */
+	
+	public function delete_default_object_acl() {
+		
+	}
+	
+	public function get_default_object_acl() {
+		
+	}
+	
+	public function insert_default_object_acl() {
+		
+	}
+	
+	public function list_default_object_acl() {
+		
+	}
+	
+	public function patch_default_object_acl() {
+		
+	}
+	
+	public function update_default_object_acl() {
+		
+	}
 	
 	/* NOTIFICATIONS. */
 	
