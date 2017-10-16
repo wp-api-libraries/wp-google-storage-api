@@ -11,7 +11,7 @@
 * Plugin URI: https://github.com/wp-api-libraries/wp-google-storage-api
 * Description: Perform API requests to Google Storage in WordPress.
 * Author: WP API Libraries
-* Version: 1.0.2
+* Version: 1.0.0
 * Author URI: https://wp-api-libraries.com
 * GitHub Plugin URI: https://github.com/wp-api-libraries/wp-google-storage-api
 * GitHub Branch: master
