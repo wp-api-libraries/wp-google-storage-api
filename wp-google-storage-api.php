@@ -16,233 +16,145 @@
 * GitHub Plugin URI: https://github.com/wp-api-libraries/wp-google-storage-api
 * GitHub Branch: master
 */
+
 /* Exit if accessed directly. */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /* Check if class exists. */
 if ( ! class_exists( 'GoogleStorageAPI' ) ) {
-	
+
 	/**
 	 * GoogleStorageAPI Class.
 	 */
 	class GoogleStorageAPI {
-		
 		/**
-		 * BaseAPI Endpoint
+		 * API Key.
+		 *
+		 * @var string
+		 */
+		static protected $api_token;
+
+		/**
+		 * Google storage api Endpoint
 		 *
 		 * @var string
 		 * @access protected
 		 */
-		protected $base_uri = 'https://www.googleapis.com/storage/v1';
+		protected $base_uri = 'https://www.googleapis.com/storage/v1/';
 
+		/**
+		 * Route being called.
+		 *
+		 * @var string
+		 */
+		protected $route = '';
+
+
+		/**
+		 * Class constructor.
+		 *
+		 * @param string $api_token             Google API Key.
+		 * @param string $auth_email            Email associated to the account.
+		 * @param string $user_service_key      User Service key.
+		 */
+		public function __construct( $api_token ) {
+			static::$api_token = $api_token;
+		}
+
+		/**
+		 * Prepares API request.
+		 *
+		 * @param  string $route   API route to make the call to.
+		 * @param  array  $args    Arguments to pass into the API call.
+		 * @param  array  $method  HTTP Method to use for request.
+		 * @return self            Returns an instance of itself so it can be chained to the fetch method.
+		 */
+		protected function build_request( $route, $args = array(), $method = 'GET' ) {
+			// Start building query.
+			$this->set_headers();
+			$this->args['method'] = $method;
+			$this->route = $route;
+
+			// Generate query string for GET requests.
+			if ( 'GET' === $method ) {
+				$this->route = add_query_arg( array_filter( $args ), $route );
+			} elseif ( 'application/json' === $this->args['headers']['Content-Type'] ) {
+				$this->args['body'] = wp_json_encode( $args );
+			} else {
+				$this->args['body'] = $args;
+			}
+			_error_log( $route );
+			return $this;
+		}
+
+
+		/**
+		 * Fetch the request from the API.
+		 *
+		 * @access private
+		 * @return array|WP_Error Request results or WP_Error on request failure.
+		 */
+		protected function fetch() {
+			// Make the request.
+			$response = wp_remote_request( $this->base_uri . $this->route, $this->args );
+
+			// Retrieve Status code & body.
+			$code = wp_remote_retrieve_response_code( $response );
+			$body = json_decode( wp_remote_retrieve_body( $response ) );
+
+			$this->clear();
+			// Return WP_Error if request is not successful.
+			if ( ! $this->is_status_ok( $code ) ) {
+				return new WP_Error( 'response-error', sprintf( __( 'Status: %d', 'wp-postmark-api' ), $code ), $body );
+			}
+
+			return $body;
+		}
+
+
+		/**
+		 * Set request headers.
+		 */
+		protected function set_headers() {
+			// Set request headers.
+			_error_log( static::$api_token);
+			$this->args['headers'] = array(
+				'Content-Type' => 'application/json',
+				'Authorization' => 'Bearer '. static::$api_token,
+			);
+		}
+
+		/**
+		 * Clear query data.
+		 */
+		protected function clear() {
+			$this->args = array();
+			$this->query_args = array();
+		}
+
+		/**
+		 * Check if HTTP status code is a success.
+		 *
+		 * @param  int $code HTTP status code.
+		 * @return boolean       True if status is within valid range.
+		 */
+		protected function is_status_ok( $code ) {
+			return ( 200 <= $code && 300 > $code );
+		}
+
+		/**
+		 * Get User Properties
+		 *
+		 * Account Access: FREE, PRO, Business, Enterprise
+		 *
+		 * @api GET
+		 * @see https://api.Google.com/#user-user-details Documentation.
+		 * @access public
+		 * @return array  User information.
+		 */
+		public function get_bucket( $bucket ) {
+			return $this->build_request( "b/$bucket", array('key' => static::$api_token ) )->fetch();
+		}
 	}
-	
-	
-	/* BUCKET ACCESS CONTROLS. */
-	
-	public function delete_bucket_acl() {
-		
-	}
-	
-	public function get_bucket_acl() {
-		
-	}
-	
-	public function insert_bucket_acl() {
-		
-	}
-	
-	public function list_bucket_acl() {
-		
-	}
-	
-	public function patch_bucket_acl() {
-		
-	}
-	
-	public function update_bucket_acl() {
-		
-	}
-	
-	/* BUCKETS. */
-	
-	public function delete_bucket() {
-		
-	}
-	
-	public function get_bucket() {
-		
-	}
-	
-	public function get_bucket_iam_policy() {
-		
-	}
-	
-	public function add_bucket() {
-		
-	}
-	
-	public function list_bucket() {
-		
-	}
-	
-	public function patch_bucket() {
-		
-	}
-	
-	public function set_bucket_iam_policy() {
-		
-	}
-	
-	public function test_bucket_iam_permissions() {
-		
-	}
-	
-	public function update_bucket() {
-		
-	}
-	
-	/* CHANNELS. */
-	
-	public function stop_channel() {
-		
-	}
-	
-	/* DEFAULT OBJECT ACCESS CONTROLS. */
-	
-	public function delete_default_object_acl() {
-		
-	}
-	
-	public function get_default_object_acl() {
-		
-	}
-	
-	public function insert_default_object_acl() {
-		
-	}
-	
-	public function list_default_object_acl() {
-		
-	}
-	
-	public function patch_default_object_acl() {
-		
-	}
-	
-	public function update_default_object_acl() {
-		
-	}
-	
-	/* NOTIFICATIONS. */
-	
-	public function delete_notification() {
-		
-	}
-	
-	public function get_notification() {
-		
-	}
-	
-	public function insert_notifications() {
-		
-	}
-	
-	public function list_notifications() {
-		
-	}
-	
-	/* OBJECT ACCESS CONTROLS. */
-	
-	public function delete_object_acl() {
-		
-	}
-	
-	public function get_object_acl() {
-		
-	}
-	
-	public function insert_object_acl() {
-		
-	}
-	
-	public function list_object_acl() {
-		
-	}
-	
-	public function patch_object_acl() {
-		
-	}
-	
-	public function update_object_acl() {
-		
-	}
-	
-	/* OBJECTS. */
-	
-	public function compose_object() {
-		
-	}
-	
-	public function copy_object() {
-		
-	}
-	
-	public function delete_object() {
-		
-	}
-	
-	public function get_object() {
-		
-	}
-	
-	public function get_object_iam_policy() {
-		
-	}
-	
-	public function insert_object() {
-		
-	}
-	
-	public function list_object() {
-		
-	}
-	
-	public function patch_object() {
-		
-	}
-	
-	public function rewrite_object() {
-		
-	}
-	
-	public function set_object_iam_policy() {
-		
-	}
-	
-	public function test_object_iam_permissions() {
-		
-	}
-	
-	public function update_object() {
-		
-	}
-	
-	public function watch_all_objects( $bucket ) {
-		// /b/bucket/o/watch
-	}
-	
-	/* PROJECTS SERVICE ACCOUNT. */
-	
-	/**
-	 * Get the email address of this project's Google Cloud Storage service account.
-	 * 
-	 * @access public
-	 * @param mixed $project_id Project ID.
-	 * @return void
-	 */
-	public function get_project_service_account( $project_id ) {
-		// /projects/projectId/serviceAccount
-	}
-	
+
 }
