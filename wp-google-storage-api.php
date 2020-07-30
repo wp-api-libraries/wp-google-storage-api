@@ -1,4 +1,3 @@
-
 <?php
 /**
  * WP Google Storage API
@@ -18,7 +17,8 @@
 */
 
 /* Exit if accessed directly. */
-if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; }
 
 /* Check if class exists. */
 if ( ! class_exists( 'GoogleStorageAPI' ) ) {
@@ -32,7 +32,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		 *
 		 * @var string
 		 */
-		static protected $api_token;
+		protected static $api_token;
 
 		/**
 		 * Google storage api Endpoint
@@ -40,7 +40,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		 * @var string
 		 * @access protected
 		 */
-		protected $base_uri = 'https://www.googleapis.com/storage/v1/';
+		protected $base_uri = 'https://storage.googleapis.com/storage/v1/';
 
 		/**
 		 * Route being called.
@@ -73,7 +73,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 			// Start building query.
 			$this->set_headers();
 			$this->args['method'] = $method;
-			$this->route = $route;
+			$this->route          = $route;
 
 			// Generate query string for GET requests.
 			if ( 'GET' === $method ) {
@@ -83,7 +83,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 			} else {
 				$this->args['body'] = $args;
 			}
-			_error_log( $route );
+
 			return $this;
 		}
 
@@ -98,6 +98,8 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 			// Make the request.
 			$response = wp_remote_request( $this->base_uri . $this->route, $this->args );
 
+			// var_dump( $response );
+
 			// Retrieve Status code & body.
 			$code = wp_remote_retrieve_response_code( $response );
 			$body = json_decode( wp_remote_retrieve_body( $response ) );
@@ -105,7 +107,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 			$this->clear();
 			// Return WP_Error if request is not successful.
 			if ( ! $this->is_status_ok( $code ) ) {
-				return new WP_Error( 'response-error', sprintf( __( 'Status: %d', 'wp-postmark-api' ), $code ), $body );
+				return new WP_Error( 'response-error', sprintf( __( 'Status: %d', 'wp-google-storage-api' ), $code ), $body );
 			}
 
 			return $body;
@@ -116,11 +118,11 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		 * Set request headers.
 		 */
 		protected function set_headers() {
+
 			// Set request headers.
-			_error_log( static::$api_token);
 			$this->args['headers'] = array(
-				'Content-Type' => 'application/json',
-				'Authorization' => 'Bearer '. static::$api_token,
+				'Content-Type'  => 'application/json',
+				'Authorization' => 'Bearer ' . static::$api_token,
 			);
 		}
 
@@ -128,7 +130,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		 * Clear query data.
 		 */
 		protected function clear() {
-			$this->args = array();
+			$this->args       = array();
 			$this->query_args = array();
 		}
 
@@ -143,18 +145,67 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		}
 
 		/**
-		 * Get User Properties
-		 *
-		 * Account Access: FREE, PRO, Business, Enterprise
-		 *
-		 * @api GET
-		 * @see https://api.Google.com/#user-user-details Documentation.
-		 * @access public
-		 * @return array  User information.
+		 * Get Bucket.
+		 * @param  string $bucket [description]
+		 * @param  array  $args   [description]
+		 * @return [type]         [description]
 		 */
-		public function get_bucket( $bucket ) {
-			return $this->build_request( "b/$bucket", array('key' => static::$api_token ) )->fetch();
+		public function get_bucket( string $bucket, $args = array() ) {
+			return $this->build_request( "b/$bucket", array( 'key' => static::$api_token ) )->fetch();
 		}
+
+		/**
+		 * Get Object.
+		 * @param  string $bucket [description]
+		 * @param  string $object [description]
+		 * @param  array  $args   [description]
+		 * @return [type]         [description]
+		 */
+		public function get_object( string $bucket, string $object, $args = array() ) {
+
+			$bucket = urlencode( $bucket );
+			$object = urlencode( $object );
+
+			return $this->build_request( "b/$bucket/o/$object", array( 'key' => static::$api_token ) )->fetch();
+		}
+
+		/**
+		 * Insert Object (https://cloud.google.com/storage/docs/json_api/v1/objects/insert)
+		 * @param  [type] $bucket [description]
+		 * @param  array  $args   [description]
+		 * @return [type]         [description]
+		 */
+		public function insert_object( string $bucket, $args = array() ) {
+			$bucket = urlencode( $bucket );
+			return $this->build_request( "b/$bucket/o", array( 'key' => static::$api_token ), 'POST' )->fetch();
+		}
+
+		/**
+		 * Delete Object.
+		 * @param  string $bucket [description]
+		 * @param  string $object [description]
+		 * @param  array  $args   [description]
+		 * @return [type]         [description]
+		 */
+		public function delete_object( string $bucket, string $object, $args = array() ) {
+			$bucket = urlencode( $bucket );
+			$object = urlencode( $object );
+			return $this->build_request( "b/$bucket/o/$object", array( 'key' => static::$api_token ), 'DELETE' )->fetch();
+		}
+
+		/**
+		 * Update Object.
+		 * @param  string $bucket [description]
+		 * @param  string $object [description]
+		 * @param  array  $args   [description]
+		 * @return [type]         [description]
+		 */
+		public function update_object( string $bucket, string $object, $args = array() ) {
+			$bucket = urlencode( $bucket );
+			$object = urlencode( $object );
+			return $this->build_request( "b/$bucket/o/$object", array( 'key' => static::$api_token ), 'PUT' )->fetch();
+		}
+
 	}
 
 }
