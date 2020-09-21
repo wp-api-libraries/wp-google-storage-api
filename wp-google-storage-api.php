@@ -205,11 +205,13 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		 * 
 		 * @see https://cloud.google.com/storage/docs/uploading-objects#rest-upload-objects
 		 * 
-		 * @param  [type] $bucket [description]
-		 * @param  array  $args   [description]
-		 * @return [type]         [description]
+		 * @param  string $bucket      Bucket Name
+		 * @param  string $upload_type The type of upload request (media|multipart|resumable) default=media.
+		 * @param  string $file_path   File path of the file to upload
+		 * @param  string $name        File name. If null the name in the filepath will be used.
+		 * @return JSON                JSON response.
 		 */
-		public function insert_object( string $bucket, string $upload_type, string $file_path, string $name = null ) {
+		public function insert_object( string $bucket, string $file_path, string $name = null, string $upload_type ='media') {
 			$this->is_upload  = true;
 
 			$bucket = urlencode( $bucket );
