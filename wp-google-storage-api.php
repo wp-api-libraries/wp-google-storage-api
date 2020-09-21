@@ -40,14 +40,36 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		 * @var string
 		 * @access protected
 		 */
-		protected $base_uri = 'https://storage.googleapis.com/storage/v1/';
+		protected $base_uri   = 'https://storage.googleapis.com/storage/v1/';
+
+		/**
+		 * Google storage upload api Endpoint
+		 *
+		 * @var string
+		 */
+		protected $upload_uri = 'https://storage.googleapis.com/upload/storage/v1/';
 
 		/**
 		 * Route being called.
 		 *
+		 * @access protected
 		 * @var string
 		 */
 		protected $route = '';
+
+		/**
+		 * Is the api call an upload.
+		 *
+		 * @var boolean
+		 */
+		protected $is_upload   = false;
+
+		/**
+		 * Object upload mime type
+		 *
+		 * @var string
+		 */
+		protected $upload_type;
 
 
 		/**
@@ -77,8 +99,8 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 
 			// Generate query string for GET requests.
 			if ( 'GET' === $method ) {
-				$this->route = add_query_arg( array_filter( $args ), $route );
-			} elseif ( 'application/json' === $this->args['headers']['Content-Type'] ) {
+				$this->route = add_query_arg( array_filter( $args ), $this->route );
+			} elseif ( ! $this->is_upload && 'application/json' === $this->args['headers']['Content-Type'] ) {
 				$this->args['body'] = wp_json_encode( $args );
 			} else {
 				$this->args['body'] = $args;
@@ -95,16 +117,18 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		 * @return array|WP_Error Request results or WP_Error on request failure.
 		 */
 		protected function fetch() {
-			// Make the request.
-			$response = wp_remote_request( $this->base_uri . $this->route, $this->args );
+			// Choose correct uri.
+			$uri  = ($this->is_upload) ? $this->upload_uri : $this->base_uri;
 
-			// var_dump( $response );
+			// Make the request.
+			$response = wp_remote_request( $uri . $this->route, $this->args );
 
 			// Retrieve Status code & body.
 			$code = wp_remote_retrieve_response_code( $response );
 			$body = json_decode( wp_remote_retrieve_body( $response ) );
 
 			$this->clear();
+
 			// Return WP_Error if request is not successful.
 			if ( ! $this->is_status_ok( $code ) ) {
 				return new WP_Error( 'response-error', sprintf( __( 'Status: %d', 'wp-google-storage-api' ), $code ), $body );
@@ -121,7 +145,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 
 			// Set request headers.
 			$this->args['headers'] = array(
-				'Content-Type'  => 'application/json',
+				'Content-Type'  => ( $this->is_upload ) ? $this->upload_type : 'application/json',
 				'Authorization' => 'Bearer ' . static::$api_token,
 			);
 		}
@@ -130,6 +154,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		 * Clear query data.
 		 */
 		protected function clear() {
+			$this->is_upload  = false;
 			$this->args       = array();
 			$this->query_args = array();
 		}
@@ -146,38 +171,62 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 
 		/**
 		 * Get Bucket.
+		 * 
 		 * @param  string $bucket [description]
 		 * @param  array  $args   [description]
 		 * @return [type]         [description]
 		 */
 		public function get_bucket( string $bucket, $args = array() ) {
-			return $this->build_request( "b/$bucket", array( 'key' => static::$api_token ) )->fetch();
+			$bucket = urlencode( $bucket );
+			return $this->build_request( "b/$bucket", $args = array() )->fetch();
 		}
 
 		/**
 		 * Get Object.
-		 * @param  string $bucket [description]
-		 * @param  string $object [description]
-		 * @param  array  $args   [description]
-		 * @return [type]         [description]
+		 * 
+		 * @link https://cloud.google.com/storage/docs/json_api/v1/objects/get
+		 * 
+		 * @param  string $bucket Bucket Name
+		 * @param  string $object Object Name
+		 * @param  array  $args   https://cloud.google.com/storage/docs/json_api/v1/objects/get#parameters 
+		 * 						  ( Setting 'alt' =>'media' as a query arg, retrieves object data ).
+		 * @return JSON|OBJECT    Returns JSON with object metadata or the object data if 'alt' is set to 'media'.
 		 */
-		public function get_object( string $bucket, string $object, $args = array() ) {
+		public function get_object( string $bucket, string $object, $args = array( 'alt' => 'json' ) ) {
 
 			$bucket = urlencode( $bucket );
 			$object = urlencode( $object );
 
-			return $this->build_request( "b/$bucket/o/$object", array( 'key' => static::$api_token ) )->fetch();
+			return $this->build_request( "b/$bucket/o/$object", $args )->fetch();
 		}
 
 		/**
 		 * Insert Object (https://cloud.google.com/storage/docs/json_api/v1/objects/insert)
+		 * 
+		 * @see https://cloud.google.com/storage/docs/uploading-objects#rest-upload-objects
+		 * 
 		 * @param  [type] $bucket [description]
 		 * @param  array  $args   [description]
 		 * @return [type]         [description]
 		 */
-		public function insert_object( string $bucket, $args = array() ) {
+		public function insert_object( string $bucket, string $upload_type, string $file_path, string $name = null ) {
+			$this->is_upload  = true;
+
 			$bucket = urlencode( $bucket );
-			return $this->build_request( "b/$bucket/o", array( 'key' => static::$api_token ), 'POST' )->fetch();
+
+			// Set file name from filepath if null.
+			$name = ( is_null($name) ) ? wp_basename( $file_path ) : $name;
+
+			// Set mime type.
+			$this->upload_type = mime_content_type( $file_path );
+
+			$file = file_get_contents($file_path);
+			$route = add_query_arg( array(
+				'uploadType' => $upload_type,
+				'name'       => $name
+			), "b/$bucket/o" );
+
+			return $this->build_request( $route, $file, 'POST' )->fetch();
 		}
 
 		/**
@@ -190,7 +239,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		public function delete_object( string $bucket, string $object, $args = array() ) {
 			$bucket = urlencode( $bucket );
 			$object = urlencode( $object );
-			return $this->build_request( "b/$bucket/o/$object", array( 'key' => static::$api_token ), 'DELETE' )->fetch();
+			return $this->build_request( "b/$bucket/o/$object", $args, 'DELETE' )->fetch();
 		}
 
 		/**
