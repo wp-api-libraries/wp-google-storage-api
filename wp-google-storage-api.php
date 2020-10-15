@@ -5,6 +5,7 @@
  * @link https://cloud.google.com/storage/docs/json_api/
  * @package WP-API-Libraries\WP-Google-Stroage-API
  */
+
 /*
 * Plugin Name: WP Google Storage API
 * Plugin URI: https://github.com/wp-api-libraries/wp-google-storage-api
@@ -40,7 +41,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		 * @var string
 		 * @access protected
 		 */
-		protected $base_uri   = 'https://storage.googleapis.com/storage/v1/';
+		protected $base_uri = 'https://storage.googleapis.com/storage/v1/';
 
 		/**
 		 * Google storage upload api Endpoint
@@ -62,7 +63,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		 *
 		 * @var boolean
 		 */
-		protected $is_upload   = false;
+		protected $is_upload = false;
 
 		/**
 		 * Object upload mime type
@@ -75,9 +76,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		/**
 		 * Class constructor.
 		 *
-		 * @param string $api_token             Google API Key.
-		 * @param string $auth_email            Email associated to the account.
-		 * @param string $user_service_key      User Service key.
+		 * @param string $api_token Google API Key.
 		 */
 		public function __construct( $api_token ) {
 			static::$api_token = $api_token;
@@ -118,7 +117,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		 */
 		protected function fetch() {
 			// Choose correct uri.
-			$uri  = ($this->is_upload) ? $this->upload_uri : $this->base_uri;
+			$uri = ( $this->is_upload ) ? $this->upload_uri : $this->base_uri;
 
 			// Make the request.
 			$response = wp_remote_request( $uri . $this->route, $this->args );
@@ -131,6 +130,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 
 			// Return WP_Error if request is not successful.
 			if ( ! $this->is_status_ok( $code ) ) {
+				// translators: Server response status code.
 				return new WP_Error( 'response-error', sprintf( __( 'Status: %d', 'wp-google-storage-api' ), $code ), $body );
 			}
 
@@ -171,90 +171,152 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 
 		/**
 		 * Get Bucket.
-		 * 
-		 * @param  string $bucket [description]
-		 * @param  array  $args   [description]
+		 *
+		 * @param  string $bucket Bucket to retrieve.
+		 * @param  array  $args   Args to pass in to api call.
 		 * @return [type]         [description]
 		 */
 		public function get_bucket( string $bucket, $args = array() ) {
-			$bucket = urlencode( $bucket );
+			$bucket = rawurlencode( $bucket );
 			return $this->build_request( "b/$bucket", $args = array() )->fetch();
 		}
 
 		/**
 		 * Get Object.
-		 * 
+		 *
 		 * @link https://cloud.google.com/storage/docs/json_api/v1/objects/get
-		 * 
-		 * @param  string $bucket Bucket Name
-		 * @param  string $object Object Name
-		 * @param  array  $args   https://cloud.google.com/storage/docs/json_api/v1/objects/get#parameters 
-		 * 						  ( Setting 'alt' =>'media' as a query arg, retrieves object data ).
+		 *
+		 * @param  string $bucket Bucket Name.
+		 * @param  string $object Object Name.
+		 * @param  array  $args   https://cloud.google.com/storage/docs/json_api/v1/objects/get#parameters ( Setting 'alt' =>'media' as a query arg, retrieves object data ).
 		 * @return JSON|OBJECT    Returns JSON with object metadata or the object data if 'alt' is set to 'media'.
 		 */
 		public function get_object( string $bucket, string $object, $args = array( 'alt' => 'json' ) ) {
 
-			$bucket = urlencode( $bucket );
-			$object = urlencode( $object );
+			$bucket = rawurlencode( $bucket );
+			$object = rawurlencode( $object );
 
 			return $this->build_request( "b/$bucket/o/$object", $args )->fetch();
 		}
 
 		/**
 		 * Insert Object (https://cloud.google.com/storage/docs/json_api/v1/objects/insert)
-		 * 
+		 *
 		 * @see https://cloud.google.com/storage/docs/uploading-objects#rest-upload-objects
-		 * 
-		 * @param  string $bucket      Bucket Name
-		 * @param  string $upload_type The type of upload request (media|multipart|resumable) default=media.
-		 * @param  string $file_path   File path of the file to upload
+		 *
+		 * @param  string $bucket      Bucket Name.
+		 * @param  string $file_path   File path of the file to upload.
 		 * @param  string $name        File name. If null the name in the filepath will be used.
+		 * @param  string $upload_type The type of upload request (media|multipart|resumable) default=media.
 		 * @return JSON                JSON response.
 		 */
-		public function insert_object( string $bucket, string $file_path, string $name = null, string $upload_type ='media') {
-			$this->is_upload  = true;
+		public function insert_object( string $bucket, string $file_path, string $name = null, string $upload_type = 'media' ) {
+			$this->is_upload = true;
 
-			$bucket = urlencode( $bucket );
+			$bucket = rawurlencode( $bucket );
 
 			// Set file name from filepath if null.
-			$name = ( is_null($name) ) ? wp_basename( $file_path ) : $name;
+			$name = ( is_null( $name ) ) ? wp_basename( $file_path ) : $name;
 
 			// Set mime type.
 			$this->upload_type = mime_content_type( $file_path );
 
-			$file = file_get_contents($file_path);
-			$route = add_query_arg( array(
-				'uploadType' => $upload_type,
-				'name'       => $name
-			), "b/$bucket/o" );
+			$file  = WP_Filesystem_Direct::get_contents( $file_path );
+			$route = add_query_arg(
+				array(
+					'uploadType' => $upload_type,
+					'name'       => $name,
+				),
+				"b/$bucket/o"
+			);
 
 			return $this->build_request( $route, $file, 'POST' )->fetch();
 		}
 
 		/**
 		 * Delete Object.
-		 * @param  string $bucket [description]
-		 * @param  string $object [description]
-		 * @param  array  $args   [description]
+		 *
+		 * @param  string $bucket [description].
+		 * @param  string $object [description].
+		 * @param  array  $args   [description].
 		 * @return [type]         [description]
 		 */
 		public function delete_object( string $bucket, string $object, $args = array() ) {
-			$bucket = urlencode( $bucket );
-			$object = urlencode( $object );
+			$bucket = rawurlencode( $bucket );
+			$object = rawurlencode( $object );
 			return $this->build_request( "b/$bucket/o/$object", $args, 'DELETE' )->fetch();
 		}
 
 		/**
 		 * Update Object.
-		 * @param  string $bucket [description]
-		 * @param  string $object [description]
-		 * @param  array  $args   [description]
+		 *
+		 * @param  string $bucket [description].
+		 * @param  string $object [description].
+		 * @param  array  $args   [description].
 		 * @return [type]         [description]
 		 */
 		public function update_object( string $bucket, string $object, $args = array() ) {
-			$bucket = urlencode( $bucket );
-			$object = urlencode( $object );
+			$bucket = rawurlencode( $bucket );
+			$object = rawurlencode( $object );
 			return $this->build_request( "b/$bucket/o/$object", array( 'key' => static::$api_token ), 'PUT' )->fetch();
+		}
+
+		/**
+		 * Undocumented function
+		 *
+		 * @param [type]  $service_account_file JSON string of the service account file.
+		 * @param [type]  $bucket_name          Name of the google storage bucket.
+		 * @param [type]  $object_name          Object name aka the filepath.
+		 * @param integer $expiration           Expiration time in seconds.
+		 * @param string  $http_method          HTTP method for signed URL.
+		 * @return string|WP_Error
+		 */
+		public static function generate_signed_urlv2( $service_account_file, $bucket_name, $object_name, $expiration = 604800, $http_method = 'GET' ) {
+
+			if ( $expiration > 604800 ) {
+				return new WP_Error( 'invalid-expiration', 'Expiration Time can\'t be longer than 604800 seconds (7 days).' );
+			}
+
+			$service_account = self::is_json_valid( $service_account_file );
+			if ( is_wp_error( $service_account ) ) {
+				return $service_account;
+			}
+
+			$datetime_now = gmdate( 'Ymd\THis\Z' );
+
+			$expiry              = time() + $expiration;
+			$escaped_object_name = rawurlencode( $object_name );
+			$access_id           = rawurlencode( $service_account->client_email );
+			$policy_string       = $http_method . "\n\n\n" . $expiry . "\n/" . $bucket_name . '/' . $escaped_object_name;
+
+			if ( openssl_sign( $policy_string, $signature, $service_account->private_key, OPENSSL_ALGO_SHA256 ) ) {
+				$signature = rawurlencode( base64_encode( $signature ) );
+				return 'https://storage.googleapis.com/' . $bucket_name . '/' . $escaped_object_name . '?GoogleAccessId=' . $access_id . '&Expires=' . $expiry . '&Signature=' . $signature;
+			}
+
+			return new WP_Error();
+		}
+
+		/**
+		 * Is Service account JSON valid.
+		 *
+		 * @param  string $service_account_json Service account json string to be validated.
+		 * @return Object|WP_Error
+		 */
+		private static function is_json_valid( $service_account_json ) {
+			$service_account = json_decode( $service_account_json );
+
+			if ( json_last_error() !== JSON_ERROR_NONE
+				|| ! array_key_exists( 'private_key', $service_account )
+				|| ! array_key_exists( 'client_email', $service_account )
+				|| ! array_key_exists( 'token_uri', $service_account )
+				|| ! array_key_exists( 'auth_uri', $service_account )
+			) {
+				return new WP_Error( 'invalid-service-account-json', __( 'Please verify that a valid service account json string is being used.', 'wp-google-auth-api' ) );
+			}
+
+			return $service_account;
+
 		}
 
 	}
