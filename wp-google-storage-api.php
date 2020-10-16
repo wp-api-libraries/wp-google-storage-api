@@ -262,11 +262,62 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		}
 
 		/**
-		 * Undocumented function
+		 * Generate Signed URL's V4 method
 		 *
-		 * @param [type]  $service_account_file JSON string of the service account file.
-		 * @param [type]  $bucket_name          Name of the google storage bucket.
-		 * @param [type]  $object_name          Object name aka the filepath.
+		 * @param string  $service_account_file JSON string of the service account file.
+		 * @param string  $bucket_name          Name of the google storage bucket.
+		 * @param string  $object_name          Object name aka the filepath.
+		 * @param integer $expiration           Expiration time in seconds.
+		 * @param string  $http_method          HTTP method for signed URL.
+		 * @return string|WP_Error
+		 */
+		public static function generate_signed_urlv4( $service_account_file, $bucket_name, $object_name, $expiration = 604800, $http_method = 'GET' ) {
+
+			// Max expiration time is 7 days.
+			if ( $expiration > 604800 ) {
+				return new WP_Error( 'invalid-expiration', 'Expiration Time can\'t be longer than 604800 seconds (7 days).' );
+			}
+
+			// Check if service account file is valid.
+			$service_account = self::is_json_valid( $service_account_file );
+			if ( is_wp_error( $service_account ) ) {
+				return $service_account;
+			}
+
+			$active_time         = gmdate( 'Ymd\THis\Z' );
+			$escaped_object_name = rawurlencode( $object_name );
+
+			// Prepare Canonical Query String.
+			$resource_url     = 'https://storage.googleapis.com/' . $bucket_name . '/' . $escaped_object_name;
+			$credential_scope = gmdate( 'Ymd' ) . '/auto/storage/goog4_request';
+			$canonical_args   = array(
+				'X-Goog-Algorithm'     => 'GOOG4-RSA-SHA256',
+				'X-Goog-Credential'    => rawurlencode( $service_account->client_email . '/' . $credential_scope ),
+				'X-Goog-Date'          => $active_time,
+				'X-Goog-Expires'       => $expiration,
+				'X-Goog-SignedHeaders' => 'host',
+			);
+			$canonical_url    = add_query_arg( array_filter( $canonical_args ), $resource_url );
+
+			// Prepare the string to sign.
+			$canonical_request        = $http_method . "\n/" . $bucket_name . '/' . $escaped_object_name . "\n" . str_replace( $resource_url . '?', '', $canonical_url ) . "\nhost:storage.googleapis.com\n\nhost\nUNSIGNED-PAYLOAD";
+			$hashed_canonical_request = hash( 'sha256', $canonical_request );
+			$string_to_sign           = "GOOG4-RSA-SHA256\n" . $active_time . "\n" . $credential_scope . "\n" . $hashed_canonical_request;
+
+			if ( openssl_sign( $string_to_sign, $signature, $service_account->private_key, OPENSSL_ALGO_SHA256 ) ) {
+				$signature = bin2hex( $signature );
+				return $canonical_url . '&X-Goog-Signature=' . $signature;
+			}
+
+			return new WP_Error( 'invalid-private-key', 'The URL could not be signed. Please check your private key in the service account' );
+		}
+
+		/**
+		 * Generate Signed URL's V2 method
+		 *
+		 * @param string  $service_account_file JSON string of the service account file.
+		 * @param string  $bucket_name          Name of the google storage bucket.
+		 * @param string  $object_name          Object name aka the filepath.
 		 * @param integer $expiration           Expiration time in seconds.
 		 * @param string  $http_method          HTTP method for signed URL.
 		 * @return string|WP_Error
@@ -282,8 +333,6 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 				return $service_account;
 			}
 
-			$datetime_now = gmdate( 'Ymd\THis\Z' );
-
 			$expiry              = time() + $expiration;
 			$escaped_object_name = rawurlencode( $object_name );
 			$access_id           = rawurlencode( $service_account->client_email );
@@ -294,7 +343,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 				return 'https://storage.googleapis.com/' . $bucket_name . '/' . $escaped_object_name . '?GoogleAccessId=' . $access_id . '&Expires=' . $expiry . '&Signature=' . $signature;
 			}
 
-			return new WP_Error();
+			return new WP_Error( 'invalid-private-key', 'The URL could not be signed. Please check your private key in the service account' );
 		}
 
 		/**
