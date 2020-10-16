@@ -221,7 +221,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 			// Set mime type.
 			$this->upload_type = mime_content_type( $file_path );
 
-			$file  = WP_Filesystem_Direct::get_contents( $file_path );
+			$file  = file_get_contents( $file_path );
 			$route = add_query_arg(
 				array(
 					'uploadType' => $upload_type,
@@ -236,29 +236,51 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 		/**
 		 * Delete Object.
 		 *
-		 * @param  string $bucket [description].
-		 * @param  string $object [description].
-		 * @param  array  $args   [description].
-		 * @return [type]         [description]
+		 * @param  string $bucket Bucket Name.
+		 * @param  string $object Object Name.
+		 * @param  array  $args   https://cloud.google.com/storage/docs/json_api/v1/objects/delete.
+		 * @return JSON           JSON response.
 		 */
 		public function delete_object( string $bucket, string $object, $args = array() ) {
 			$bucket = rawurlencode( $bucket );
 			$object = rawurlencode( $object );
-			return $this->build_request( "b/$bucket/o/$object", $args, 'DELETE' )->fetch();
+
+			// Add additional query args to request.
+			$route = add_query_arg( $args, "b/$bucket/o/$object" );
+
+			return $this->build_request( $route, array(), 'DELETE' )->fetch();
 		}
 
 		/**
 		 * Update Object.
 		 *
-		 * @param  string $bucket [description].
-		 * @param  string $object [description].
-		 * @param  array  $args   [description].
-		 * @return [type]         [description]
+		 * Updates entire object to to only what is specified in args.
+		 *
+		 * @param  string $bucket Bucket Name.
+		 * @param  string $object Object Name.
+		 * @param  array  $args   https://cloud.google.com/storage/docs/json_api/v1/objects#resource i.e array( 'metadata' => array( "foo" => "bar" ) ).
+		 * @return JSON           JSON response.
 		 */
 		public function update_object( string $bucket, string $object, $args = array() ) {
 			$bucket = rawurlencode( $bucket );
 			$object = rawurlencode( $object );
-			return $this->build_request( "b/$bucket/o/$object", array( 'key' => static::$api_token ), 'PUT' )->fetch();
+			return $this->build_request( "b/$bucket/o/$object", $args, 'PUT' )->fetch();
+		}
+
+		/**
+		 * Patch Object.
+		 *
+		 * Only updates fields specified in args.
+		 *
+		 * @param  string $bucket Bucket Name.
+		 * @param  string $object Object Name.
+		 * @param  array  $args   https://cloud.google.com/storage/docs/json_api/v1/objects#resource i.e array( 'metadata' => array( "foo" => "bar" ) ).
+		 * @return JSON           JSON response.
+		 */
+		public function patch_object( string $bucket, string $object, $args = array() ) {
+			$bucket = rawurlencode( $bucket );
+			$object = rawurlencode( $object );
+			return $this->build_request( "b/$bucket/o/$object", $args, 'PATCH' )->fetch();
 		}
 
 		/**
