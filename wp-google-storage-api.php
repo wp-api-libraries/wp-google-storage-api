@@ -94,6 +94,7 @@ if ( ! class_exists( 'GoogleStorageAPI' ) ) {
 			// Start building query.
 			$this->set_headers();
 			$this->args['method'] = $method;
+			$this->args['timeout'] = 300;
 			$this->route          = $route;
 
 			// Generate query string for GET requests.
